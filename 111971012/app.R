@@ -1,31 +1,51 @@
 library(shiny)
+library(shinythemes)
 library(plotly)
 library(FactoMineR)
 library(factoextra)
-library(dplyr)
+library(ggplot2)
 
 ui <- fluidPage(
-  titlePanel("Iris PCA & CA"),
-  sidebarLayout(
-    sidebarPanel(
-      tabsetPanel(
-        tabPanel("PCA",
-                 selectInput("pc1", "Select PC1", choices = c("PC1", "PC2", "PC3", "PC4"),selected = "PC1"),
-                 selectInput("pc2", "Select PC2", choices = c("PC1", "PC2", "PC3", "PC4"),selected = "PC2")
-        ),
-        tabPanel("CA")
-      )
-    ),
-    mainPanel(
-      tabsetPanel(
-        tabPanel("PCA Plot", plotlyOutput("pcaPlot")),
-        tabPanel("CA Plot", plotlyOutput("caPlot"))
-      )
-    )
+  theme = shinytheme("cerulean"),
+  
+  navbarPage("PCA and CA analysis",
+             
+             # 第一頁：PCA
+             tabPanel("PCA",
+                      
+                      sidebarLayout(
+                        sidebarPanel(
+                          selectInput("pc1", "x axis:", choices = c("PC1", "PC2", "PC3", "PC4"),selected = "PC1"),
+                          selectInput("pc2", "y axis:", choices = c("PC1", "PC2", "PC3", "PC4"),selected = "PC2")
+                        ),
+                        
+                        mainPanel(
+                          plotlyOutput("pcaPlot")
+                        )
+                      )
+                      
+             ),
+             
+             # 第二頁：CA
+             tabPanel("CA",
+                      
+                      sidebarLayout(
+                        sidebarPanel(
+                          selectInput("dim1", "Select Dim.1", choices = c("Dim.1", "Dim.2", "Dim.3"), selected = "Dim.1"),
+                          selectInput("dim2", "Select Dim.2", choices = c("Dim.1", "Dim.2", "Dim.3"), selected = "Dim.2")
+                        ),
+                        
+                        mainPanel(
+                          plotlyOutput("caPlot")
+                        )
+                      )
+                      
+             )
   )
 )
 
 server <- function(input, output) {
+  
   # PCA 圖表
   output$pcaPlot <- renderPlotly({
     pca_data <- iris[, 1:4]
@@ -44,19 +64,16 @@ server <- function(input, output) {
   
   # CA 圖表
   output$caPlot <- renderPlotly({
-    ca_data <- iris[,1:4]
-    ca_data <- scale(ca_data)
-    ca_res <- CA(ca_data)
-    ca_df <- as.data.frame(ca_res$ind$coord)
-    ca_df$species <- iris$Species
+    # 將 iris dataset 中的 Species 欄位轉換成類別變數
+    iris$Species <- as.factor(iris$Species)
     
-    p <- ggplot(ca_df, aes_string(x = "Dim.1", y = "Dim.2", color = "species")) +
-      geom_point(size = 3) +
-      scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
-      labs(title = "Correspondence Analysis", x = "Dimension 1", y = "Dimension 2")
-    
-    ggplotly(p)
+    # 執行 CA
+    ca <- CA(iris[, 1:4], graph = FALSE)
+
+    # 將 CA 結果視覺化
+    plot.CA(ca, col.col = "blue", col.row = iris$Species)
   })
+  
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui, server)
